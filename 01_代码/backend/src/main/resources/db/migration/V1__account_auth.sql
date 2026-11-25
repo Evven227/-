@@ -1,0 +1,14 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+ALTER TABLE "ACCOUNT"
+    ADD COLUMN IF NOT EXISTS "password_hash" TEXT;
+
+ALTER TABLE "ACCOUNT"
+    ADD COLUMN IF NOT EXISTS "last_login_at" TIMESTAMP WITH TIME ZONE;
+
+UPDATE "ACCOUNT"
+SET "password_hash" = crypt('AdcDemo@2026!', gen_salt('bf'))
+WHERE "password_hash" IS NULL;
+
+ALTER TABLE "ACCOUNT"
+    ALTER COLUMN "password_hash" SET NOT NULL;
