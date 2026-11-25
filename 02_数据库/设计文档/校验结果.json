@@ -1,0 +1,19 @@
+{
+  "base_table_count": 32,
+  "added_table": "DENTIST_PERFORMANCE",
+  "table_count": 33,
+  "foreign_key_count": 64,
+  "enum_fields_have_values": true,
+  "appointment_schedule_use_datetime": true,
+  "event_fields_use_timestamp": true,
+  "performance_has_calculation_version": true,
+  "performance_score_method": "weighted_kpi_40_40_20",
+  "id_strategy": "BIGINT identity; no UUID",
+  "database": "PostgreSQL 18",
+  "business_timezone": "Asia/Shanghai",
+  "postgresql18_schema_table_count": 33,
+  "postgresql18_schema_foreign_key_count": 64,
+  "refund_in_scope": false,
+  "complex_finance_in_scope": false,
+  "source_xml": "E:\\系统分析设计\\数据库设计\\OpenDentalDocumentation26-2.xml"
+}

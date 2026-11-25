@@ -1,0 +1,402 @@
+@startuml
+!include ../10月20/ER图样式.iuml
+top to bottom direction
+skinparam defaultFontSize 15
+skinparam nodesep 90
+skinparam ranksep 120
+title ADC 牙科诊所｜完整单页 ER 图（33 张表 · 全部字段 · 64 组外键）
+package "患者与预约" #EEF5FF {
+entity "患者\nPATIENT" as PATIENT {
+  [PK] patient_id : ID
+  [U1] master_no : TEXT
+  name : TEXT
+  birth_date : DATE?
+  address : TEXT?
+  phone : TEXT
+  email : TEXT?
+  emergency_name : TEXT?
+  emergency_phone : TEXT?
+  special_needs : TEXT?
+  allergy_assessment : ENUM
+  [FK] merged_into_patient_id : ID?
+}
+entity "过敏原\nALLERGEN" as ALLERGEN {
+  [PK] allergen_id : ID
+  [U1] name : TEXT
+}
+entity "患者过敏史\nPATIENT_ALLERGY" as PATIENT_ALLERGY {
+  [PK,FK] patient_id : ID
+  [PK,FK] allergen_id : ID
+  reaction : TEXT
+  notes : TEXT?
+  recorded_at : TIMESTAMP
+}
+entity "预约\nAPPOINTMENT" as APPOINTMENT {
+  [PK] appointment_id : ID
+  [FK] patient_id : ID
+  [FK] shift_id : ID
+  starts_at : DATETIME
+  ends_at : DATETIME
+  status : ENUM
+  [FK] created_by_account_id : ID
+  created_at : TIMESTAMP
+}
+entity "预约治疗需求\nAPPOINTMENT_REQUEST_ITEM" as APPOINTMENT_REQUEST_ITEM {
+  [PK,FK] appointment_id : ID
+  [PK,FK] treatment_item_id : ID
+}
+entity "预约变更轨迹\nAPPOINTMENT_EVENT" as APPOINTMENT_EVENT {
+  [PK] event_id : ID
+  [FK] appointment_id : ID
+  old_status : ENUM?
+  new_status : ENUM
+  [FK] old_shift_id : ID?
+  [FK] new_shift_id : ID?
+  old_starts_at : DATETIME?
+  old_ends_at : DATETIME?
+  new_starts_at : DATETIME?
+  new_ends_at : DATETIME?
+  reason : TEXT?
+  [FK] operator_account_id : ID
+  occurred_at : TIMESTAMP
+}
+}
+package "人员与资质" #F0F7F2 {
+entity "员工\nSTAFF" as STAFF {
+  [PK] staff_id : ID
+  [U1] staff_no : TEXT
+  name : TEXT
+  phone : TEXT?
+  active : BOOL
+}
+entity "诊所\nCLINIC" as CLINIC {
+  [PK] clinic_id : ID
+  [U1] clinic_code : TEXT
+  name : TEXT
+  address : TEXT
+  latitude : DECIMAL?
+  longitude : DECIMAL?
+  phone : TEXT
+  email : TEXT?
+  [FK] manager_staff_id : ID?
+}
+entity "牙医\nDENTIST" as DENTIST {
+  [PK,FK] dentist_id : ID
+  [U1] license_no : TEXT
+}
+entity "跨诊所执业关系\nPRACTICE" as PRACTICE {
+  [PK] practice_id : ID
+  [FK,U1] dentist_id : ID
+  [FK,U1] clinic_id : ID
+  [U1] valid_from : DATE
+  valid_to : DATE?
+  status : ENUM
+}
+entity "专业资质\nQUALIFICATION" as QUALIFICATION {
+  [PK] qualification_id : ID
+  [U1] code : TEXT
+  name : TEXT
+}
+entity "牙医资质证书\nDENTIST_QUALIFICATION" as DENTIST_QUALIFICATION {
+  [PK] dentist_qualification_id : ID
+  [FK,U1] dentist_id : ID
+  [FK,U1] qualification_id : ID
+  [U1] certificate_no : TEXT
+  valid_from : DATE
+  valid_to : DATE
+}
+entity "治疗所需资质\nTREATMENT_REQUIRED_QUALIFICATION" as TREATMENT_REQUIRED_QUALIFICATION {
+  [PK,FK] treatment_item_id : ID
+  [PK,FK] qualification_id : ID
+}
+}
+package "排班与审批" #FFF7E8 {
+entity "排班版本\nSHIFT" as SHIFT {
+  [PK] shift_id : ID
+  [U1] shift_series_no : TEXT
+  [FK] dentist_id : ID
+  [FK] clinic_id : ID
+  starts_at : DATETIME
+  ends_at : DATETIME
+  status : ENUM
+  [U1] version_no : INT
+  [FK] previous_shift_id : ID?
+  [FK] published_by_staff_id : ID?
+  published_at : TIMESTAMP?
+}
+entity "调班休假申请\nSHIFT_REQUEST" as SHIFT_REQUEST {
+  [PK] request_id : ID
+  [FK] applicant_dentist_id : ID
+  request_type : ENUM
+  requested_from : DATETIME
+  requested_to : DATETIME
+  reason : TEXT
+  status : ENUM
+  submitted_at : TIMESTAMP
+  [FK] reviewer_staff_id : ID?
+  reviewed_at : TIMESTAMP?
+  rejection_reason : TEXT?
+}
+entity "申请涉及班次\nSHIFT_REQUEST_ITEM" as SHIFT_REQUEST_ITEM {
+  [PK,FK] request_id : ID
+  [PK,FK] shift_id : ID
+  [FK] proposed_dentist_id : ID?
+  [FK] proposed_clinic_id : ID?
+  proposed_starts_at : DATETIME?
+  proposed_ends_at : DATETIME?
+  [FK] result_shift_id : ID?
+}
+entity "受影响预约处理项\nREQUEST_APPOINTMENT_IMPACT" as REQUEST_APPOINTMENT_IMPACT {
+  [PK,FK] request_id : ID
+  [PK,FK] appointment_id : ID
+  resolution_status : ENUM
+  [FK] resolution_event_id : ID?
+  [FK] resolved_by_account_id : ID?
+  resolved_at : TIMESTAMP?
+}
+}
+package "诊疗与价格" #F4F0FA {
+entity "标准治疗项目\nTREATMENT_ITEM" as TREATMENT_ITEM {
+  [PK] treatment_item_id : ID
+  [U1] item_code : TEXT
+  name : TEXT
+  standard_unit : TEXT
+  active : BOOL
+}
+entity "就诊\nENCOUNTER" as ENCOUNTER {
+  [PK] encounter_id : ID
+  [FK,U1] appointment_id : ID
+  chief_complaint : TEXT?
+  diagnosis : TEXT?
+  special_needs : TEXT?
+  status : ENUM
+  arrived_at : TIMESTAMP
+  [FK] arrived_by_account_id : ID
+  completed_at : TIMESTAMP?
+  [FK] confirmed_by_dentist_id : ID?
+}
+entity "标准单位价格版本\nPRICE_VERSION" as PRICE_VERSION {
+  [PK,U2] price_version_id : ID
+  [FK,U1,U2] treatment_item_id : ID
+  [U1] version_no : INT
+  unit : TEXT
+  unit_price : MONEY
+  currency : TEXT
+  valid_from : DATE
+  valid_to : DATE?
+}
+entity "实际治疗明细\nTREATMENT_LINE" as TREATMENT_LINE {
+  [PK] treatment_line_id : ID
+  [FK] encounter_id : ID
+  [FK] treatment_item_id : ID
+  [FK] price_version_id : ID
+  quantity : QUANTITY
+  name_snapshot : TEXT
+  unit_snapshot : TEXT
+  unit_price_snapshot : MONEY
+  notes : TEXT?
+  confirmed_at : TIMESTAMP?
+}
+}
+package "治疗后结算" #FFF0EE {
+entity "患者结算单\nINVOICE" as INVOICE {
+  [PK] invoice_id : ID
+  [FK,U1] encounter_id : ID
+  [U2] invoice_no : TEXT
+  status : ENUM
+}
+entity "结算单历史版本\nINVOICE_VERSION" as INVOICE_VERSION {
+  [PK] invoice_version_id : ID
+  [FK,U1] invoice_id : ID
+  [U1] version_no : INT
+  total_amount : MONEY
+  currency : TEXT
+  issued_at : TIMESTAMP
+  [FK] issued_by_account_id : ID
+  correction_reason : TEXT?
+}
+entity "结算逐行明细\nINVOICE_LINE" as INVOICE_LINE {
+  [PK] invoice_line_id : ID
+  [FK,U1] invoice_version_id : ID
+  [FK,U1] treatment_line_id : ID
+  description_snapshot : TEXT
+  unit_snapshot : TEXT
+  quantity_snapshot : QUANTITY
+  unit_price_snapshot : MONEY
+  line_total : MONEY
+}
+entity "患者收款记录\nPAYMENT" as PAYMENT {
+  [PK] payment_id : ID
+  [FK] invoice_version_id : ID
+  [U1] request_no : TEXT
+  [U2] receipt_no : TEXT?
+  amount : MONEY
+  method : ENUM
+  status : ENUM
+  paid_at : TIMESTAMP
+  [FK] operator_account_id : ID
+}
+}
+package "耗材库存" #ECF7F7 {
+entity "药品及耗材\nMATERIAL" as MATERIAL {
+  [PK] material_id : ID
+  [U1] material_code : TEXT
+  name : TEXT
+  unit : TEXT
+  active : BOOL
+}
+entity "诊所物料库存\nCLINIC_STOCK" as CLINIC_STOCK {
+  [PK,FK] clinic_id : ID
+  [PK,FK] material_id : ID
+  on_hand : QUANTITY
+  warning_threshold : QUANTITY
+  lock_version : INT
+}
+entity "治疗实际耗材\nTREATMENT_MATERIAL_USAGE" as TREATMENT_MATERIAL_USAGE {
+  [PK] usage_id : ID
+  [FK] treatment_line_id : ID
+  [FK] clinic_id : ID
+  [FK] material_id : ID
+  [U1] request_no : TEXT
+  quantity : QUANTITY
+  recorded_at : TIMESTAMP
+}
+entity "库存数量流水\nSTOCK_MOVEMENT" as STOCK_MOVEMENT {
+  [PK] movement_id : ID
+  [FK] clinic_id : ID
+  [FK] material_id : ID
+  [FK,U1] usage_id : ID?
+  movement_type : ENUM
+  quantity_delta : QUANTITY
+  reason : TEXT
+  occurred_at : TIMESTAMP
+  [FK] operator_account_id : ID
+}
+}
+package "权限与审计" #F3F4F6 {
+entity "访问账号\nACCOUNT" as ACCOUNT {
+  [PK] account_id : ID
+  [U1] login_name : TEXT
+  [FK,U2] patient_id : ID?
+  [FK,U3] staff_id : ID?
+  active : BOOL
+}
+entity "角色与数据范围\nACCESS_GRANT" as ACCESS_GRANT {
+  [PK] grant_id : ID
+  [FK] account_id : ID
+  role_code : ENUM
+  scope_type : ENUM
+  [FK] clinic_id : ID?
+}
+entity "敏感操作审计\nAUDIT_EVENT" as AUDIT_EVENT {
+  [PK] audit_id : ID
+  [FK] actor_account_id : ID
+  object_type : TEXT
+  object_key : TEXT
+  action : TEXT
+  reason : TEXT?
+  before_value : JSON?
+  after_value : JSON?
+  occurred_at : TIMESTAMP
+}
+}
+package "运营绩效" #FFFBEA {
+entity "牙医绩效结果\nDENTIST_PERFORMANCE" as DENTIST_PERFORMANCE {
+  [PK] performance_id : ID
+  [FK,U1] dentist_id : ID
+  [FK,U1] clinic_id : ID
+  [U1] period_start : DATE
+  [U1] period_end : DATE
+  appointment_count : INT
+  attended_count : INT
+  cancelled_count : INT
+  no_show_count : INT
+  completed_count : INT
+  treatment_count : INT
+  workload_target_count : INT
+  performance_score : DECIMAL?
+  reward_level : ENUM
+  review_status : ENUM
+  [FK] reviewed_by_account_id : ID?
+  reviewed_at : TIMESTAMP?
+  [U1] calculation_version : TEXT
+  calculated_at : TIMESTAMP
+  created_at : TIMESTAMP
+}
+}
+PATIENT |o--o{ PATIENT : 归并到
+PATIENT ||--o{ PATIENT_ALLERGY : 过敏史
+ALLERGEN ||--o{ PATIENT_ALLERGY : 过敏原
+STAFF |o--o{ CLINIC : 管理者
+STAFF ||--o| DENTIST : 牙医子类型
+DENTIST ||--o{ PRACTICE : 执业牙医
+CLINIC ||--o{ PRACTICE : 执业诊所
+DENTIST ||--o{ DENTIST_QUALIFICATION : 持证
+QUALIFICATION ||--o{ DENTIST_QUALIFICATION : 资质类别
+TREATMENT_ITEM ||--o{ TREATMENT_REQUIRED_QUALIFICATION : 治疗要求
+QUALIFICATION ||--o{ TREATMENT_REQUIRED_QUALIFICATION : 必需资质
+DENTIST ||--o{ SHIFT : 出诊牙医
+CLINIC ||--o{ SHIFT : 出诊诊所
+SHIFT |o--o{ SHIFT : 前一版本
+STAFF |o--o{ SHIFT : 审核发布
+PATIENT ||--o{ APPOINTMENT : 患者预约
+SHIFT ||--o{ APPOINTMENT : 班次内预约
+ACCOUNT ||--o{ APPOINTMENT : 登记
+APPOINTMENT ||--o{ APPOINTMENT_REQUEST_ITEM : 治疗需求
+TREATMENT_ITEM ||--o{ APPOINTMENT_REQUEST_ITEM : 期望项目
+APPOINTMENT ||--o{ APPOINTMENT_EVENT : 变更轨迹
+SHIFT |o--o{ APPOINTMENT_EVENT : 原班次
+SHIFT |o--o{ APPOINTMENT_EVENT : 新班次
+ACCOUNT ||--o{ APPOINTMENT_EVENT : 变更操作
+APPOINTMENT ||--o| ENCOUNTER : 到诊后形成
+ACCOUNT ||--o{ ENCOUNTER : 签到操作
+DENTIST |o--o{ ENCOUNTER : 治疗确认
+TREATMENT_ITEM ||--o{ PRICE_VERSION : 价格版本
+ENCOUNTER ||--o{ TREATMENT_LINE : 实际治疗
+TREATMENT_ITEM ||--o{ TREATMENT_LINE : 执行项目
+PRICE_VERSION ||--o{ TREATMENT_LINE : 同一项目价格来源
+ENCOUNTER ||--o| INVOICE : 完成后结算
+INVOICE ||--o{ INVOICE_VERSION : 更正版本
+ACCOUNT ||--o{ INVOICE_VERSION : 确认出单
+INVOICE_VERSION ||--o{ INVOICE_LINE : 逐行费用
+TREATMENT_LINE ||--o{ INVOICE_LINE : 治疗来源
+INVOICE_VERSION ||--o{ PAYMENT : 患者付款
+ACCOUNT ||--o{ PAYMENT : 收款登记
+DENTIST ||--o{ SHIFT_REQUEST : 申请人
+STAFF |o--o{ SHIFT_REQUEST : 审核人
+SHIFT_REQUEST ||--o{ SHIFT_REQUEST_ITEM : 涉及班次
+SHIFT ||--o{ SHIFT_REQUEST_ITEM : 原班次
+DENTIST |o--o{ SHIFT_REQUEST_ITEM : 拟调牙医
+CLINIC |o--o{ SHIFT_REQUEST_ITEM : 拟调诊所
+SHIFT |o--o{ SHIFT_REQUEST_ITEM : 落实新版本
+SHIFT_REQUEST ||--o{ REQUEST_APPOINTMENT_IMPACT : 影响项
+APPOINTMENT ||--o{ REQUEST_APPOINTMENT_IMPACT : 受影响预约
+APPOINTMENT_EVENT |o--o{ REQUEST_APPOINTMENT_IMPACT : 处理依据
+ACCOUNT |o--o{ REQUEST_APPOINTMENT_IMPACT : 协调处理
+CLINIC ||--o{ CLINIC_STOCK : 分诊所库存
+MATERIAL ||--o{ CLINIC_STOCK : 库存物料
+TREATMENT_LINE ||--o{ TREATMENT_MATERIAL_USAGE : 实际耗材
+CLINIC_STOCK ||--o{ TREATMENT_MATERIAL_USAGE : 库存来源
+CLINIC_STOCK ||--o{ STOCK_MOVEMENT : 数量流水
+TREATMENT_MATERIAL_USAGE |o--o| STOCK_MOVEMENT : 耗用扣减
+ACCOUNT ||--o{ STOCK_MOVEMENT : 库存操作
+PATIENT |o--o| ACCOUNT : 患者账号
+STAFF |o--o| ACCOUNT : 员工账号
+ACCOUNT ||--o{ ACCESS_GRANT : 角色授权
+CLINIC |o--o{ ACCESS_GRANT : 诊所范围
+ACCOUNT ||--o{ AUDIT_EVENT : 敏感操作留痕
+DENTIST ||--o{ DENTIST_PERFORMANCE : 周期绩效
+CLINIC ||--o{ DENTIST_PERFORMANCE : 诊所绩效
+ACCOUNT |o--o{ DENTIST_PERFORMANCE : 审核结果
+legend bottom left
+  PK 主键；FK 外键；U1/U2 同编号字段构成一组唯一键
+  ? 可空；|| 必须且仅一个；o| 零或一个；o{ 零到多个
+  全部 33 张表、字段、主外键及 64 组关系在同一画布完整展示
+  关系标明父表与子表的基数；复合外键字段映射见数据字典
+  金额 MONEY = DECIMAL(12,2)；数量 QUANTITY = DECIMAL(12,3)
+  DATETIME 为预约/排班完整日期时间；TIMESTAMP 为事件发生时刻；DATE 为业务日期；ID 为逻辑标识，物理类型在实现时确定
+  彩色区域仅作业务分类，不是分页；每张表只定义一次
+  仅含治疗后患者结算；不含退款、工资、成本、利润或奖金支付；绩效仅为运营结果
+  耗材库存为数量管理补充假设；运营指标由业务事实推导
+endlegend
+@enduml
